@@ -1,0 +1,12 @@
+{
+  "name": "G-PLAN Digital Empire",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
+  "features": {"ghcr.io/devcontainers/features/docker-in-docker:2": {}},
+  "forwardPorts": [3000, 4000, 5432, 6379],
+  "portsAttributes": {
+    "3000": {"label": "G-PLAN Web", "onAutoForward": "openBrowser"},
+    "4000": {"label": "G-PLAN API", "onAutoForward": "notify"}
+  },
+  "postCreateCommand": "npm install",
+  "customizations": {"vscode": {"extensions": ["dbaeumer.vscode-eslint", "Prisma.prisma", "bradlc.vscode-tailwindcss"]}}
+}

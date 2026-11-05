@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+enum OrganisationStatus {
+  ACTIVE
+  SUSPENDED
+}
+enum MembershipRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+  CLIENT
+}
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED
+  SPAM
+}
+enum ProjectStatus {
+  DRAFT
+  PROPOSED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  OVERDUE
+  VOID
+}
+enum AiJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  passwordHash    String?
+  status          UserStatus @default(PENDING)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  memberships     OrganisationMember[]
+  auditEvents     AuditLog[]
+  @@index([status, createdAt])
+}
+
+model Organisation {
+  id        String @id @default(cuid())
+  name      String
+  slug      String @unique
+  status    OrganisationStatus @default(ACTIVE)
+  country   String? @default("NG")
+  timezone  String? @default("Africa/Lagos")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members   OrganisationMember[]
+  projects  Project[]
+  leads     Lead[]
+  brand     BrandProfile?
+  @@index([status, createdAt])
+}
+
+model OrganisationMember {
+  id             String @id @default(cuid())
+  userId         String
+  organisationId String
+  role           MembershipRole @default(MEMBER)
+  createdAt      DateTime @default(now())
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  @@unique([userId, organisationId])
+  @@index([organisationId, role])
+}
+
+model Enquiry {
+  id        String @id @default(cuid())
+  name      String
+  email     String
+  company   String?
+  service   String
+  message   String @db.Text
+  status    EnquiryStatus @default(NEW)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model Project {
+  id             String @id @default(cuid())
+  organisationId String
+  name           String
+  description    String? @db.Text
+  status         ProjectStatus @default(DRAFT)
+  startsAt       DateTime?
+  dueAt          DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  @@index([organisationId, status])
+}
+
+model BrandProfile {
+  id             String @id @default(cuid())
+  organisationId String @unique
+  displayName    String
+  website        String?
+  toneOfVoice    String? @db.Text
+  audience       String? @db.Text
+  guidelines     String? @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+}
+
+model Lead {
+  id             String @id @default(cuid())
+  organisationId String
+  name           String
+  email          String?
+  phone          String?
+  source         String?
+  stage          String @default("NEW")
+  notes          String? @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  @@index([organisationId, stage, createdAt])
+}
+
+model AiJob {
+  id             String @id @default(cuid())
+  organisationId String
+  userId         String?
+  provider       String
+  model          String?
+  taskType       String
+  status         AiJobStatus @default(QUEUED)
+  inputTokens    Int?
+  outputTokens   Int?
+  costMinor      Int?
+  currency       String @default("USD")
+  errorCode      String?
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  @@index([organisationId, status, createdAt])
+}
+
+model Subscription {
+  id             String @id @default(cuid())
+  organisationId String
+  provider       String
+  providerRef    String? @unique
+  planCode       String
+  status         SubscriptionStatus @default(INCOMPLETE)
+  currency       String @default("NGN")
+  amountMinor    Int
+  currentPeriodEnd DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([organisationId, status])
+}
+
+model Invoice {
+  id             String @id @default(cuid())
+  organisationId String
+  number         String @unique
+  status         InvoiceStatus @default(DRAFT)
+  currency       String @default("NGN")
+  subtotalMinor  Int
+  taxMinor       Int @default(0)
+  totalMinor     Int
+  dueAt          DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  @@index([organisationId, status])
+}
+
+model AuditLog {
+  id          String @id @default(cuid())
+  userId      String?
+  action      String
+  resource    String?
+  resourceId  String?
+  ipAddress   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  user        User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([userId, createdAt])
+  @@index([resource, resourceId])
+}

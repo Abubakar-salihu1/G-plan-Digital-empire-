@@ -1,0 +1,26 @@
+{
+  "name": "g-plan-digital-empire",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n web,api \"npm run dev --workspace @gplan/web\" \"npm run dev --workspace @gplan/api\"",
+    "dev:web": "npm run dev --workspace @gplan/web",
+    "dev:api": "npm run dev --workspace @gplan/api",
+    "build": "npm run build --workspace @gplan/api && npm run build --workspace @gplan/web",
+    "db:generate": "npm run db:generate --workspace @gplan/api",
+    "db:push": "npm run db:push --workspace @gplan/api",
+    "db:migrate": "npm run db:migrate --workspace @gplan/api",
+    "db:studio": "npm run db:studio --workspace @gplan/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.11"
+  }
+}

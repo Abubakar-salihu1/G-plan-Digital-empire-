@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { Metadata } from "next";
 
@@ -45,6 +46,21 @@ async function logout() {
   "use server";
   (await cookies()).delete(COOKIE);
   redirect("/admin");
+}
+
+async function setStatus(formData: FormData) {
+  "use server";
+  const jar = await cookies();
+  if (!(adminKey().length >= 16 && same(jar.get(COOKIE)?.value ?? "", token()))) redirect("/admin");
+  const id = String(formData.get("id") ?? "");
+  const status = String(formData.get("status") ?? "");
+  await fetch(`${process.env.API_URL ?? "http://localhost:4000"}/api/v1/admin/enquiries/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "x-admin-key": adminKey(), "content-type": "application/json" },
+    body: JSON.stringify({ status }),
+    cache: "no-store",
+  });
+  revalidatePath("/admin");
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -109,6 +125,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <p className="mt-3 text-xs text-slate-500">
                 {new Date(e.createdAt).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Lagos" })}
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={`mailto:${e.email}?subject=${encodeURIComponent("Re: your G-PLAN enquiry")}`} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-900">Reply by email</a>
+                {[["CONTACTED", "Mark contacted"], ["QUALIFIED", "Qualified"], ["CLOSED", "Close"], ["SPAM", "Spam"]].map(([s, label]) => (
+                  <form key={s} action={setStatus}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <input type="hidden" name="status" value={s} />
+                    <button type="submit" disabled={e.status === s} className="rounded-full border border-white/20 px-4 py-2 text-xs disabled:opacity-40">{label}</button>
+                  </form>
+                ))}
+              </div>
             </li>
           ))}
         </ul>

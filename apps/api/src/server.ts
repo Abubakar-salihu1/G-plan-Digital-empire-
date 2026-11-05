@@ -78,6 +78,25 @@ app.get("/api/v1/admin/enquiries", async (req, res) => {
   }
 });
 
+const statusSchema = z.object({ status: z.enum(["NEW", "CONTACTED", "QUALIFIED", "CLOSED", "SPAM"]) });
+app.patch("/api/v1/admin/enquiries/:id", async (req, res) => {
+  if (!isAdmin(req)) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  const parsed = statusSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_status" });
+    return;
+  }
+  try {
+    const data = await prisma.enquiry.update({ where: { id: req.params.id }, data: { status: parsed.data.status } });
+    res.json({ data });
+  } catch {
+    res.status(404).json({ error: "not_found" });
+  }
+});
+
 app.use((_req, res) => {
   res.status(404).json({ error: "not_found" });
 });
